@@ -122,8 +122,8 @@ async function getQuoteFromSheet(rowNumber = null) {
     const [quote, author, fontHex, bgHex] = row;
 
     return {
-      quote,
-      author,
+      quote: "Jag älskar dig habibi ❤️",
+      author: "Joel",
       fontColor: getColor(fontHex),
       backgroundColor: getColor(bgHex)
     };
