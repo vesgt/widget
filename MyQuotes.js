@@ -201,15 +201,20 @@ async function createWidget() {
   // const quoteData = await getQuoteFromSheet();
   const quoteData = await getCustomQuote12Hour(forcedIndex);
 
+  // Get colors
+  const fallback = getColorPairFromJSON();
+  const bgColor = quoteData.backgroundColor || fallback.backgroundColor;
+  const fontColor = quoteData.fontColor || fallback.fontColor;
+  
+  widget.backgroundColor = bgColor;
+
   // Lock screen styling
   if (isLockScreen) {
-    widget.backgroundColor = new Color("#000000", 0.3);
-    
     if (config.widgetFamily === "accessoryInline") {
       // Inline lock screen (horizontal)
       const text = widget.addText(`"${quoteData.quote}" — ${quoteData.author}`);
       text.font = Font.systemFont(10);
-      text.textColor = Color.white();
+      text.textColor = fontColor;
       text.lineLimit = 1;
     } else if (config.widgetFamily === "accessorySmall") {
       // Small square lock screen
@@ -219,14 +224,14 @@ async function createWidget() {
       
       const quoteText = stack.addText(quoteData.quote);
       quoteText.font = Font.systemFont(11);
-      quoteText.textColor = Color.white();
+      quoteText.textColor = fontColor;
       quoteText.lineLimit = 3;
       quoteText.minimumScaleFactor = 0.8;
       
       if (quoteData.author) {
         const authorText = stack.addText(`— ${quoteData.author}`);
         authorText.font = Font.systemFont(8);
-        authorText.textColor = Color.white();
+        authorText.textColor = fontColor;
         authorText.lineLimit = 1;
         authorText.minimumScaleFactor = 0.7;
       }
@@ -238,14 +243,14 @@ async function createWidget() {
       
       const quoteText = stack.addText(quoteData.quote);
       quoteText.font = Font.systemFont(12);
-      quoteText.textColor = Color.white();
+      quoteText.textColor = fontColor;
       quoteText.lineLimit = 4;
       quoteText.minimumScaleFactor = 0.85;
       
       if (quoteData.author) {
         const authorText = stack.addText(`— ${quoteData.author}`);
         authorText.font = Font.systemFont(9);
-        authorText.textColor = Color.white();
+        authorText.textColor = fontColor;
         authorText.lineLimit = 1;
         authorText.minimumScaleFactor = 0.8;
       }
@@ -258,13 +263,6 @@ async function createWidget() {
     
     return widget;
   }
-
-  const fallback = getColorPairFromJSON();
-
-  const bgColor = quoteData.backgroundColor || fallback.backgroundColor;
-  const fontColor = quoteData.fontColor || fallback.fontColor;
-
-  widget.backgroundColor = bgColor;
 
   // Font settings
   // const fontSize = config.widgetFamily === "small" ? 13 : 16;
@@ -291,20 +289,15 @@ async function createWidget() {
   const quoteFont = Font.boldSystemFont(fontSize);
   const authorFont = Font.italicSystemFont(fontSize - 1);
 
-
-
   const stack = widget.addStack(); // Create a vertical stack
   stack.layoutVertically();
   stack.addSpacer();
-
-
 
   const textStack = stack.addStack();
   textStack.layoutHorizontally();
   // textStack.centerAlignContent();
   // stack.centerAlignContent();
   // textStack.addSpacer();
-
 
   // Quote: bold
   const quoteText = textStack.addText(`“${quoteData.quote}”`);
@@ -315,7 +308,6 @@ async function createWidget() {
   quoteText.leftAlignText();
 
   stack.addSpacer();
-
 
   // Author: italic
   if (quoteData.author) {
