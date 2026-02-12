@@ -84,21 +84,11 @@ function getColor(hex) {
 }
 
 function getColorPairFromJSON() {
-  try {
-    if (!fm.fileExists(COLOR_PAIRS_PATH)) return null;
-    const raw = fm.readString(COLOR_PAIRS_PATH);
-    const pairs = JSON.parse(raw);
-    const pair = pairs[Math.floor(Math.random() * pairs.length)];
-    return {
-      backgroundColor: getColor(pair.background) || new Color("#000000"),
-      fontColor: getColor(pair.font) || Color.white()
-    };
-  } catch (_) {
-    return {
-      backgroundColor: new Color("#000000"),
-      fontColor: Color.white()
-    };
-  }
+  // Default fallback colors
+  return {
+    backgroundColor: new Color("#1a1a1a"),
+    fontColor: Color.white()
+  };
 }
 
 /**
