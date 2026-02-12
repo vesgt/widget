@@ -91,47 +91,67 @@ function getColorPairFromJSON() {
   };
 }
 
-// --- Color contrast helpers ---
 // Convert a Color or hex string to RGB {r,g,b} in 0..255
 function colorToRgb(col) {
   try {
     if (!col) return null;
+    // hex string
     if (typeof col === 'string') {
-      const hex = col.replace('#','').trim();
-      if (!/^[0-9a-fA-F]+$/.test(hex)) return null;
+      const hex = col.replace('#', '').trim();
       const bigint = parseInt(hex, 16);
-      if (hex.length === 6) return { r: (bigint >> 16) & 255, g: (bigint >> 8) & 255, b: bigint & 255 };
-      if (hex.length === 3) return { r: parseInt(hex[0]+hex[0],16), g: parseInt(hex[1]+hex[1],16), b: parseInt(hex[2]+hex[2],16) };
+      if (hex.length === 6) {
+        return { r: (bigint >> 16) & 255, g: (bigint >> 8) & 255, b: bigint & 255 };
+      }
+      if (hex.length === 3) {
+        return {
+          r: parseInt(hex[0] + hex[0], 16),
+          g: parseInt(hex[1] + hex[1], 16),
+          b: parseInt(hex[2] + hex[2], 16)
+        };
+      }
     }
-    // Scriptable Color object: try .red() .green() .blue()
+
+    // Scriptable Color object - try common accessors
+    // Try methods returning 0..1
     if (typeof col.red === 'function' && typeof col.green === 'function' && typeof col.blue === 'function') {
-      return { r: Math.round(col.red()*255), g: Math.round(col.green()*255), b: Math.round(col.blue()*255) };
-    }
-    // Try numeric properties
-    if (typeof col.r !== 'undefined' && typeof col.g !== 'undefined' && typeof col.b !== 'undefined') {
-      const r = col.r > 1 ? col.r : Math.round(col.r*255);
-      const g = col.g > 1 ? col.g : Math.round(col.g*255);
-      const b = col.b > 1 ? col.b : Math.round(col.b*255);
+      const r = Math.round(col.red() * 255);
+      const g = Math.round(col.green() * 255);
+      const b = Math.round(col.blue() * 255);
       return { r, g, b };
     }
-    // Fallback: try toString -> hex
+
+    // Try properties r,g,b (0..1 or 0..255)
+    if (typeof col.r !== 'undefined' && typeof col.g !== 'undefined' && typeof col.b !== 'undefined') {
+      const r = col.r > 1 ? col.r : Math.round(col.r * 255);
+      const g = col.g > 1 ? col.g : Math.round(col.g * 255);
+      const b = col.b > 1 ? col.b : Math.round(col.b * 255);
+      return { r, g, b };
+    }
+
+    // Fallback: try toString and parse hex
     if (typeof col.toString === 'function') {
       const s = String(col.toString());
       const m = s.match(/#([0-9a-fA-F]{6})/);
-      if (m) return colorToRgb('#'+m[1]);
+      if (m) return colorToRgb('#' + m[1]);
     }
-  } catch (_) {}
+  } catch (e) {
+    // ignore and fallback below
+  }
   return null;
 }
 
+// Calculate relative luminance for RGB 0..255
 function relativeLuminance(rgb) {
   if (!rgb) return 0;
-  const srgb = [rgb.r, rgb.g, rgb.b].map(v => v/255).map(c => c <= 0.03928 ? c/12.92 : Math.pow((c+0.055)/1.055,2.4));
-  return 0.2126*srgb[0] + 0.7152*srgb[1] + 0.0722*srgb[2];
+  const srgb = [rgb.r, rgb.g, rgb.b].map(v => v / 255).map(c => {
+    return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  });
+  return 0.2126 * srgb[0] + 0.7152 * srgb[1] + 0.0722 * srgb[2];
 }
 
-// Return better contrasting Color (Color.white() or Color.black()), prefer provided color if readable
+// Return white or black Color for sufficient contrast against background
 function getContrastingColor(backgroundColor, preferredColor = null) {
+  // If user provided a preferred color and it's readable, use it
   try {
     if (preferredColor) {
       const prefRgb = colorToRgb(preferredColor);
@@ -140,13 +160,15 @@ function getContrastingColor(backgroundColor, preferredColor = null) {
         const lum1 = relativeLuminance(bgRgb);
         const lum2 = relativeLuminance(prefRgb);
         const contrast = (Math.max(lum1, lum2) + 0.05) / (Math.min(lum1, lum2) + 0.05);
-        if (contrast >= 4.5) return preferredColor;
+        if (contrast >= 4.5) return preferredColor; // WCAG AA
       }
     }
   } catch (_) {}
+
   const rgb = colorToRgb(backgroundColor);
   if (!rgb) return Color.white();
   const lum = relativeLuminance(rgb);
+  // if background is bright, use dark text
   return lum > 0.5 ? Color.black() : Color.white();
 }
 
@@ -253,8 +275,7 @@ async function createWidget() {
   // Get colors
   const fallback = getColorPairFromJSON();
   const bgColor = quoteData.backgroundColor || fallback.backgroundColor;
-  const preferredColor = quoteData.fontColor || fallback.fontColor;
-  const finalFontColor = getContrastingColor(bgColor, preferredColor);
+  const fontColor = quoteData.fontColor || fallback.fontColor;
   
   widget.backgroundColor = bgColor;
 
@@ -264,7 +285,7 @@ async function createWidget() {
       // Inline lock screen (horizontal)
       const text = widget.addText(`"${quoteData.quote}" — ${quoteData.author}`);
       text.font = Font.systemFont(10);
-      text.textColor = finalFontColor;
+      text.textColor = fontColor;
       text.lineLimit = 1;
     } else if (config.widgetFamily === "accessorySmall") {
       // Small square lock screen
@@ -274,14 +295,14 @@ async function createWidget() {
       
       const quoteText = stack.addText(quoteData.quote);
       quoteText.font = Font.systemFont(11);
-      quoteText.textColor = finalFontColor;
+      quoteText.textColor = fontColor;
       quoteText.lineLimit = 3;
       quoteText.minimumScaleFactor = 0.8;
       
       if (quoteData.author) {
         const authorText = stack.addText(`— ${quoteData.author}`);
         authorText.font = Font.systemFont(8);
-        authorText.textColor = finalFontColor;
+        authorText.textColor = fontColor;
         authorText.lineLimit = 1;
         authorText.minimumScaleFactor = 0.7;
       }
@@ -293,14 +314,14 @@ async function createWidget() {
       
       const quoteText = stack.addText(quoteData.quote);
       quoteText.font = Font.systemFont(12);
-      quoteText.textColor = finalFontColor;
+      quoteText.textColor = fontColor;
       quoteText.lineLimit = 4;
       quoteText.minimumScaleFactor = 0.85;
       
       if (quoteData.author) {
         const authorText = stack.addText(`— ${quoteData.author}`);
         authorText.font = Font.systemFont(9);
-        authorText.textColor = finalFontColor;
+        authorText.textColor = fontColor;
         authorText.lineLimit = 1;
         authorText.minimumScaleFactor = 0.8;
       }
@@ -353,7 +374,7 @@ async function createWidget() {
   const quoteText = textStack.addText(`“${quoteData.quote}”`);
   quoteText.font = quoteFont;
   // quoteText.font = loadCustomFont("Roboto-Bold.ttf", fontSize);
-  quoteText.textColor = finalFontColor;
+  quoteText.textColor = fontColor;
   // quoteText.minimumScaleFactor = 0.5;
   quoteText.leftAlignText();
 
@@ -369,7 +390,7 @@ async function createWidget() {
     // authorText.font = new Font(FONT, fontSize - 3);
     // authorText.font = loadCustomFont("Roboto-Italic.ttf", fontSize - 3);
     authorText.font = authorFont;
-    authorText.textColor = finalFontColor;
+    authorText.textColor = fontColor;
     // authorText.minimumScaleFactor = 0.5;
     authorText.rightAlignText();
   }
