@@ -86,6 +86,13 @@ function getColorPairFromJSON() {
 
 async function getQuoteFromSheet(rowNumber = null) {
   try {
+    return {
+      quote: "Jag älskar dig habibi ❤️",
+      author: "Joel",
+      fontColor: Color.white(),
+      backgroundColor: new Color("#000000")
+    };
+
     const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${category}`;
     const req = new Request(url);
     const raw = await req.loadString();
