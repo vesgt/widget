@@ -103,9 +103,24 @@ function getColorPairFromJSON() {
 
 /**
  * Get a custom quote that changes every 12 hours
+ * @param {number|null} forcedIndex - If provided, use this specific quote index instead of 12-hour rotation
  */
-function getCustomQuote12Hour() {
-  const index = getDeterministic12HourNumber(0, MY_CUSTOM_QUOTES.length);
+function getCustomQuote12Hour(forcedIndex = null) {
+  let index;
+  
+  // If a specific index is forced (e.g., from widget parameter), use it
+  if (forcedIndex !== null && forcedIndex >= 0 && forcedIndex < MY_CUSTOM_QUOTES.length) {
+    index = forcedIndex;
+    console.log("🎯 Using forced quote index:", forcedIndex);
+  } else if (forcedIndex !== null) {
+    console.warn("⚠️ Forced index out of range:", forcedIndex, "valid range: 0 -", MY_CUSTOM_QUOTES.length - 1);
+    index = getDeterministic12HourNumber(0, MY_CUSTOM_QUOTES.length);
+  } else {
+    // Use deterministic 12-hour rotation
+    index = getDeterministic12HourNumber(0, MY_CUSTOM_QUOTES.length);
+    console.log("⏰ Using 12-hour rotation, index:", index);
+  }
+  
   const quote = MY_CUSTOM_QUOTES[index];
   
   return {
@@ -114,76 +129,6 @@ function getCustomQuote12Hour() {
     fontColor: Color.white(),
     backgroundColor: new Color("#1a1a1a")
   };
-}
-
-async function getQuoteFromSheet(rowNumber = null) {
-  try {
-    return {
-      quote: "Jag älskar dig habibi ❤️",
-      author: "Joel",
-      fontColor: Color.white(),
-      backgroundColor: new Color("#000000")
-    };
-
-    const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${category}`;
-    const req = new Request(url);
-    const raw = await req.loadString();
-
-    const json = JSON.parse(raw.match(/google.visualization.Query.setResponse\((.+)\)/)[1]);
-    const rows = json.table.rows.map(r => r.c.map(c => (c ? c.v : "")));
-
-    const usable = rows.filter(r => r[0] && r[1]);
-
-    let row;
-    if (rowNumber !== null && rowNumber >= 2) {
-      row = rows[rowNumber - 1]; // Spreadsheet row 544 → rows[542]
-    }
-
-    if (!row || !row[0]) {
-      console.warn(`⚠️ No valid quote at row ${rowNumber}, falling back to filtered random`);
-
-      // Try to find a usable quote that fits the widget size
-      const fitting = usable.filter(([q, a]) => !isQuoteTooLong(q, a, widgetSize));
-
-      if (fitting.length > 0) {
-        // row = fitting[Math.floor(Math.random() * fitting.length)];
-        const dailyIndex = getDailyIndex(fitting.length, widgetSize);
-        row = fitting[dailyIndex];
-
-      } else {
-        // If none fit, fall back to truly random
-        console.warn("⚠️ No short enough quote found, using random long one");
-        row = usable[Math.floor(Math.random() * usable.length)];
-      }
-    }
-
-
-    const [quote, author, fontHex, bgHex] = row;
-
-    return {
-      quote: "Jag älskar dig habibi ❤️",
-      author: "Joel",
-      fontColor: getColor(fontHex),
-      backgroundColor: getColor(bgHex)
-    };
-  } catch (err) {
-    console.error("🔥 Error fetching or parsing sheet data:", err);
-    return {
-      quote: "Something went wrong.",
-      author: ""
-    };
-  }
-}
-
-
-
-// Utility to get repeatable index based on current day
-function getDailyIndex(length, sizeKey) {
-  const today = new Date();
-  const seed = today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate();
-  const sizeOffset = { s: 1, m: 2, l: 3 };
-  return (seed + sizeOffset[sizeKey]) % length;
-  //   return 1; // for testing
 }
 
 /**
@@ -249,7 +194,7 @@ function loadCustomFont(fileName, size) {
 async function createWidget() {
   const widget = new ListWidget();
   // const quoteData = await getQuoteFromSheet();
-  const quoteData = await getCustomQuote12Hour();
+  const quoteData = await getCustomQuote12Hour(forcedIndex);
 
   const fallback = getColorPairFromJSON();
 
@@ -336,7 +281,6 @@ async function createWidget() {
   console.log("📂 Category:", category);
   console.log("📏 Size:", sizeParam);
   console.log("🔢 Forced index:", forcedIndex);
-
 
   return widget;
 }
