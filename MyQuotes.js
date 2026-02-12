@@ -56,6 +56,23 @@ const SHEET_ID = "1amFMwf_j83eRLNOAWnqMNfA3ZyE6igqjZF_OrSNww84";
 const SHEET_TAB = category;
 const COLOR_PAIRS_PATH = fm.joinPath(fm.documentsDirectory(), ".source/dark_theme_color_pairs.json");
 
+// === Custom Quotes ===
+const MY_CUSTOM_QUOTES = [
+    { quote: "Tänkte att du kanske måste få veta att du är den vackraste personen i världen ❤️", author: "Din habibi" },
+    { quote: "Jag älskar dej mest av alla i hela världen, bästa bästa du ❤️", author: "Joel" },
+    { quote: "Hoppas du är medveten att oavsett hur dålig dag jag eller du har, så är jag alltid med dig", author: "Din bästa ❤️" },
+    { quote: "Måste bara nämna hur sjukt fina ögon du har hapopo ❤️", author: "Joule" },
+    { quote: "Jag hade sagt bra jobbat men jag tycker inte de hejdå.", author: "Tjakim" },
+    { quote: "Du är så himla fin och jag är så himla glad att jag har dig i mitt liv ❤️", author: "Din habibi" },
+    { quote: "Du är det bästa som hänt mig och jag älskar dig så mycket ❤️", author: "Joel" },
+    { quote: "Motiveringen är OBEGRIPLIG", author: "Tjakim" },
+    { quote: "Smaken är som röven... klöven", author: "Tjakim" },
+    { quote: "Hoppas ni är lika trötta på mig som jag är på er", author: "Tjakim" },
+    { quote: "Uttnytja varandra \n Säkerheten först \n Micke Mus (musse pig)", author: "HORANNI" },
+    { quote: "Jag hoppas du har en bra daga bara :) Skolan kan ju vara jobbig, men du är bäst", author: "Joel" }
+  // Add more of your own quotes here!
+];
+
 // === Utilities ===
 function getColor(hex) {
   if (!hex || typeof hex !== "string" || !hex.startsWith("#")) return null;
@@ -82,6 +99,21 @@ function getColorPairFromJSON() {
       fontColor: Color.white()
     };
   }
+}
+
+/**
+ * Get a custom quote that changes every 12 hours
+ */
+function getCustomQuote12Hour() {
+  const index = getDeterministic12HourNumber(0, MY_CUSTOM_QUOTES.length);
+  const quote = MY_CUSTOM_QUOTES[index];
+  
+  return {
+    quote: quote.quote,
+    author: quote.author,
+    fontColor: Color.white(),
+    backgroundColor: new Color("#1a1a1a")
+  };
 }
 
 async function getQuoteFromSheet(rowNumber = null) {
@@ -154,6 +186,30 @@ function getDailyIndex(length, sizeKey) {
   //   return 1; // for testing
 }
 
+/**
+ * Generate a deterministic number based on 12-hour intervals
+ * Same number all day until 12 hours pass, then changes
+ * @param {number} min - Minimum value (inclusive)
+ * @param {number} max - Maximum value (exclusive)
+ * @returns {number} - Deterministic number in range [min, max)
+ */
+function getDeterministic12HourNumber(min, max) {
+  const now = new Date();
+  // Get 12-hour bucket (0 or 1 per day)
+  const bucket = Math.floor(now.getHours() / 12);
+  // Create seed from date + 12-hour bucket
+  const seed = now.getFullYear() * 10000 + 
+               (now.getMonth() + 1) * 100 + 
+               now.getDate() + 
+               bucket * 0.5;
+  
+  // Simple hash function
+  const hash = Math.sin(seed) * 10000;
+  const normalized = hash - Math.floor(hash); // 0 to 1
+  
+  return Math.floor(normalized * (max - min)) + min;
+}
+
 const sfs = 12;
 const mfs = 14;
 const lfs = 16;
@@ -193,7 +249,7 @@ function loadCustomFont(fileName, size) {
 async function createWidget() {
   const widget = new ListWidget();
   // const quoteData = await getQuoteFromSheet();
-  const quoteData = await getQuoteFromSheet(forcedIndex);
+  const quoteData = await getCustomQuote12Hour();
 
   const fallback = getColorPairFromJSON();
 
