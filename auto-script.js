@@ -45,19 +45,29 @@ async function fetchAndExecuteFromGithub(githubRawUrl, localModuleName = "Remote
     console.log("✅ Code fetched successfully, length:", code.length);
     
     if (inScriptable) {
-      // Scriptable environment - use importModule
-      console.log("💾 Saving to local module:", localModuleName);
-      const fm = FileManager.local();
-      const modulePath = fm.joinPath(fm.documentsDirectory(), localModuleName + ".js");
-      fm.writeString(modulePath, code);
+      // Scriptable environment - use eval to execute directly
+      console.log("💾 Caching code...");
       
-      console.log("⚡ Executing fetched code via importModule...");
-      const module = importModule(localModuleName);
-      console.log("Module loaded:", typeof module);
-    } else {
-      // PC/Node environment - use eval
-      console.log("⚡ Executing fetched code via eval...");
-      eval(code);
+      try {
+        // Wrap code in a function to handle top-level returns
+        const wrappedCode = `
+(async () => {
+  try {
+    ${code}
+  } catch (e) {
+    console.error("Error in fetched code:", e);
+  }
+})();
+`;
+        
+        console.log("⚡ Executing fetched code...");
+        eval(wrappedCode);
+        console.log("✅ Code executed successfully");
+        
+      } catch (evalError) {
+        console.error("Eval error:", String(evalError));
+        throw evalError;
+      }
     }
     
     return code;
@@ -70,7 +80,6 @@ async function fetchAndExecuteFromGithub(githubRawUrl, localModuleName = "Remote
     if (error) {
       console.error("Error name:", error.name || "unknown");
       console.error("Error message:", error.message || "no message");
-      console.error("Full error object:", JSON.stringify(error, null, 2));
     }
     
     throw error;
