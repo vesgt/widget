@@ -68,7 +68,7 @@ const MY_CUSTOM_QUOTES = [
     { quote: "Motiveringen är OBEGRIPLIG", author: "Tjakim" },
     { quote: "Smaken är som röven... klöven", author: "Tjakim" },
     { quote: "Hoppas ni är lika trötta på mig som jag är på er", author: "Tjakim" },
-    { quote: "Uttnytja varandra \n Säkerheten först \n Micke Mus (musse pig)", author: "HORANNI" },
+    { quote: "Uttnytja varandra (första dagen) \n Säkerheten först (x3) \n Micke Mus (menar musse pig)", author: "HORANNI" },
     { quote: "Jag hoppas du har en bra daga bara :) Skolan kan ju vara jobbig, men du är bäst", author: "Joel" }
   // Add more of your own quotes here!
 ];
@@ -192,9 +192,72 @@ function loadCustomFont(fileName, size) {
 
 // === Widget ===
 async function createWidget() {
+  // Check if running on lock screen
+  const isLockScreen = config.widgetFamily === "accessorySmall" || 
+                       config.widgetFamily === "accessoryRectangular" ||
+                       config.widgetFamily === "accessoryInline";
+  
   const widget = new ListWidget();
   // const quoteData = await getQuoteFromSheet();
   const quoteData = await getCustomQuote12Hour(forcedIndex);
+
+  // Lock screen styling
+  if (isLockScreen) {
+    widget.backgroundColor = new Color("#000000", 0.3);
+    
+    if (config.widgetFamily === "accessoryInline") {
+      // Inline lock screen (horizontal)
+      const text = widget.addText(`"${quoteData.quote}" — ${quoteData.author}`);
+      text.font = Font.systemFont(10);
+      text.textColor = Color.white();
+      text.lineLimit = 1;
+    } else if (config.widgetFamily === "accessorySmall") {
+      // Small square lock screen
+      const stack = widget.addStack();
+      stack.layoutVertically();
+      stack.spacing = 2;
+      
+      const quoteText = stack.addText(quoteData.quote);
+      quoteText.font = Font.systemFont(11);
+      quoteText.textColor = Color.white();
+      quoteText.lineLimit = 3;
+      quoteText.minimumScaleFactor = 0.8;
+      
+      if (quoteData.author) {
+        const authorText = stack.addText(`— ${quoteData.author}`);
+        authorText.font = Font.systemFont(8);
+        authorText.textColor = Color.white();
+        authorText.lineLimit = 1;
+        authorText.minimumScaleFactor = 0.7;
+      }
+    } else if (config.widgetFamily === "accessoryRectangular") {
+      // Wide lock screen
+      const stack = widget.addStack();
+      stack.layoutVertically();
+      stack.spacing = 3;
+      
+      const quoteText = stack.addText(quoteData.quote);
+      quoteText.font = Font.systemFont(12);
+      quoteText.textColor = Color.white();
+      quoteText.lineLimit = 4;
+      quoteText.minimumScaleFactor = 0.85;
+      
+      if (quoteData.author) {
+        const authorText = stack.addText(`— ${quoteData.author}`);
+        authorText.font = Font.systemFont(9);
+        authorText.textColor = Color.white();
+        authorText.lineLimit = 1;
+        authorText.minimumScaleFactor = 0.8;
+      }
+    }
+    
+    // Lock screen refresh - every 12 hours
+    const nextUpdate = new Date();
+    nextUpdate.setHours(nextUpdate.getHours() + 12);
+    widget.refreshAfterDate = nextUpdate;
+    
+    return widget;
+  }
 
   const fallback = getColorPairFromJSON();
 
@@ -277,10 +340,13 @@ async function createWidget() {
   tomorrow.setHours(0, 0, 0, 0); // exactly at 12:00:00 AM (midnight)
   widget.refreshAfterDate = tomorrow;
 
-  console.log("➡️ Param parts:", parts);
-  console.log("📂 Category:", category);
-  console.log("📏 Size:", sizeParam);
-  console.log("🔢 Forced index:", forcedIndex);
+  console.log("=== Quote Widget Info ===");
+  console.log("📱 Widget size:", config.widgetFamily);
+  console.log("🔤 Quote index:", MY_CUSTOM_QUOTES.indexOf(MY_CUSTOM_QUOTES.find(q => q.quote === quoteData.quote)));
+  console.log("👤 Author:", quoteData.author);
+  console.log("📏 Size param:", sizeParam);
+  console.log("🎯 Forced index:", forcedIndex);
+  console.log("✅ Widget ready to display");
 
   return widget;
 }
