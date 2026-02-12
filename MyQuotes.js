@@ -280,7 +280,7 @@ async function createWidget() {
 
 // === Run ===
 const widget = await createWidget();
-if (!config.runsInWidget) await widget.presentSmall();
+if (!config.runsInWidget) await widget.presentMedium();
 // if (!config.runsInWidget) await widget.presentMedium();
 // if (!config.runsInWidget) await widget.presentLarge();
 else Script.setWidget(widget);
