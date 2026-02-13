@@ -150,58 +150,69 @@ function getContrastingColor(backgroundColor, preferredColor = null) {
   return lum > 0.5 ? Color.black() : Color.white();
 }
 
+// === Scheduler: run updates three times per day (configurable) ===
+// Times are local device times in HH:MM (24h) format. Change these as needed.
+const SCHEDULE_TIMES = ["05:00", "12:00", "17:00"]; // morning, eftermiddag (midday/afternoon), evening
+
+function parseTimeStringToTodayDate(timeStr) {
+  const parts = timeStr.split(":").map(p => parseInt(p, 10));
+  const d = new Date();
+  d.setHours(parts[0] || 0, parts[1] || 0, 0, 0);
+  return d;
+}
+
+function getNextRefreshDate(timesArray) {
+  const now = new Date();
+  const candidates = timesArray.map(t => {
+    const d = parseTimeStringToTodayDate(t);
+    if (d <= now) d.setDate(d.getDate() + 1);
+    return d;
+  });
+  candidates.sort((a,b) => a - b);
+  return candidates[0];
+}
+
 /**
- * Get a custom quote that changes every 12 hours
- * @param {number|null} forcedIndex - If provided, use this specific quote index instead of 12-hour rotation
+ * Generate a deterministic number based on daily buckets.
+ * Divides the day into `numBuckets` parts and returns a stable index
+ * for the current bucket so the quote changes each scheduled run.
  */
-function getCustomQuote12Hour(forcedIndex = null) {
+function getDeterministicDailyBucket(min, max, numBuckets) {
+  const now = new Date();
+  const minutes = now.getHours() * 60 + now.getMinutes();
+  const bucketSize = (24 * 60) / numBuckets;
+  const bucket = Math.floor(minutes / bucketSize);
+  const seed = now.getFullYear() * 10000 + (now.getMonth() + 1) * 100 + now.getDate() + bucket;
+  const hash = Math.abs(Math.sin(seed) * 10000);
+  const normalized = hash - Math.floor(hash);
+  return Math.floor(normalized * (max - min)) + min;
+}
+
+/**
+ * Get a custom quote that changes per configured daily buckets (e.g., 3 updates/day)
+ * @param {number|null} forcedIndex - If provided, use this specific quote index instead of bucket rotation
+ * @param {number} numBuckets - Number of buckets per day (default 3)
+ */
+function getCustomQuoteForBuckets(forcedIndex = null, numBuckets = 3) {
   let index;
-  
-  // If a specific index is forced (e.g., from widget parameter), use it
   if (forcedIndex !== null && forcedIndex >= 0 && forcedIndex < MY_CUSTOM_QUOTES.length) {
     index = forcedIndex;
     console.log("🎯 Using forced quote index:", forcedIndex);
   } else if (forcedIndex !== null) {
     console.warn("⚠️ Forced index out of range:", forcedIndex, "valid range: 0 -", MY_CUSTOM_QUOTES.length - 1);
-    index = getDeterministic12HourNumber(0, MY_CUSTOM_QUOTES.length);
+    index = getDeterministicDailyBucket(0, MY_CUSTOM_QUOTES.length, numBuckets);
   } else {
-    // Use deterministic 12-hour rotation
-    index = getDeterministic12HourNumber(0, MY_CUSTOM_QUOTES.length);
-    console.log("⏰ Using 12-hour rotation, index:", index);
+    index = getDeterministicDailyBucket(0, MY_CUSTOM_QUOTES.length, numBuckets);
+    console.log("⏰ Using bucket rotation (", numBuckets, "/day), index:", index);
   }
-  
+
   const quote = MY_CUSTOM_QUOTES[index];
-  
   return {
     quote: quote.quote,
     author: quote.author,
     fontColor: Color.white(),
     backgroundColor: new Color("#1a1a1a")
   };
-}
-
-/**
- * Generate a deterministic number based on 12-hour intervals
- * Same number all day until 12 hours pass, then changes
- * @param {number} min - Minimum value (inclusive)
- * @param {number} max - Maximum value (exclusive)
- * @returns {number} - Deterministic number in range [min, max)
- */
-function getDeterministic12HourNumber(min, max) {
-  const now = new Date();
-  // Get 12-hour bucket (0 or 1 per day)
-  const bucket = Math.floor(now.getHours() / 12);
-  // Create seed from date + 12-hour bucket
-  const seed = now.getFullYear() * 10000 + 
-               (now.getMonth() + 1) * 100 + 
-               now.getDate() + 
-               bucket * 0.5;
-  
-  // Simple hash function
-  const hash = Math.sin(seed) * 10000;
-  const normalized = hash - Math.floor(hash); // 0 to 1
-  
-  return Math.floor(normalized * (max - min)) + min;
 }
 
 const sfs = 12;
@@ -248,7 +259,7 @@ async function createWidget() {
   
   const widget = new ListWidget();
   // const quoteData = await getQuoteFromSheet();
-  const quoteData = await getCustomQuote12Hour(forcedIndex);
+  const quoteData = await getCustomQuoteForBuckets(forcedIndex, SCHEDULE_TIMES.length);
 
   // Get colors
   const fallback = getColorPairFromJSON();
@@ -306,10 +317,8 @@ async function createWidget() {
       }
     }
     
-    // Lock screen refresh - every 12 hours
-    const nextUpdate = new Date();
-    nextUpdate.setHours(nextUpdate.getHours() + 12);
-    widget.refreshAfterDate = nextUpdate;
+    // Lock screen refresh - align with scheduler times
+    widget.refreshAfterDate = getNextRefreshDate(SCHEDULE_TIMES);
     
     return widget;
   }
@@ -377,10 +386,11 @@ async function createWidget() {
   // stack.addSpacer();
   // widget.refreshAfterDate = new Date(Date.now() + 3600000); // refresh hourly
 
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  tomorrow.setHours(0, 0, 0, 0); // exactly at 12:00:00 AM (midnight)
-  widget.refreshAfterDate = tomorrow;
+  // Schedule next widget refresh to the next configured time (morning/midday/evening)
+  const next = getNextRefreshDate(SCHEDULE_TIMES);
+  widget.refreshAfterDate = next;
+
+  console.log("🔁 Next scheduled widget refresh:", next.toString());
 
   console.log("=== Quote Widget Info ===");
   console.log("📱 Widget size:", config.widgetFamily);
