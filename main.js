@@ -69,7 +69,8 @@ const MY_CUSTOM_QUOTES = [
     { quote: "Smaken är som röven... klöven", author: "Tjakim" },
     { quote: "Hoppas ni är lika trötta på mig som jag är på er", author: "Tjakim" },
     { quote: "Uttnytja varandra (första dagen) \n Säkerheten först (x3) \n Micke Mus (menar musse pig)", author: "HORANNI" },
-    { quote: "Jag hoppas du har en bra dag bara :) Skolan kan ju vara jobbig, men du är bäst", author: "Joel" }
+    { quote: "Jag hoppas du har en bra dag bara :) Skolan kan ju vara jobbig, men du är bäst", author: "Joel" },
+    { quote: "Dagens ord: Vacker \n Varför: Det matchar min bästa, finaste, vackraste flickvän och bästa vän allmänt ❤️", author: "Dois" }
   // Add more of your own quotes here!
 ];
 
