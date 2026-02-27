@@ -207,7 +207,7 @@ function getCustomQuoteForBuckets(forcedIndex = null, numBuckets = 3) {
     console.log("⏰ Using bucket rotation (", numBuckets, "/day), index:", index);
   }
 
-  const quote = MY_CUSTOM_QUOTES[13];
+  const quote = MY_CUSTOM_QUOTES[index];
   return {
     quote: quote.quote,
     author: quote.author,
